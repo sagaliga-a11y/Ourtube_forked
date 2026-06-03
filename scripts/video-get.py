@@ -72,7 +72,7 @@ def download_video(method, url, tmp_dir, fmt, quality):
     proxy = ["--proxy", "socks5://127.0.0.1:1080"]
     ua_chrome = ["--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"]
     ua_android = ["--user-agent", "Mozilla/5.0 (Linux; Android 12; SM-S906N Build/QP1A.190711.020) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36"]
-    sort_opt = ["--format-sort", "res,vcodec:h264"] if quality not in ["best", "audio"] else []
+    sort_opt = ["--format-sort", "res,vcodec:h264"] if quality != "audio" else []
 
     methods = {
         1: ["yt-dlp"] + proxy + ["--format", fmt] + sort_opt + common + ["--extractor-args", "youtube:player_client=web", "--js-runtimes", "deno", "--remote-components", "ejs:github"] + ua_chrome + ["--add-header", "Accept-Language:en-US,en;q=0.9", url],
@@ -146,19 +146,33 @@ def process_video(url, quality, password, backup_dir, repo_owner, repo_name, bra
     fmt = get_format(quality)
 
     success = False
+    best_height = 0
+    best_method = None
+
     for method in range(1, 9):
         if download_video(method, url, tmp_dir, fmt, quality):
             quality_ok = True
-            if quality not in ["best", "audio"]:
-                for f in Path(tmp_dir).glob("*.mp4"):
-                    h = get_video_height(str(f))
-                    if h and h < int(quality) - 150:
-                        print(f"Method {method} delivered {h}p instead of {quality}p — rejecting...")
-                        quality_ok = False
-                        f.unlink()
+            current_height = 0
+            for f in Path(tmp_dir).glob("*.mp4"):
+                h = get_video_height(str(f))
+                if h:
+                    current_height = max(current_height, h)
+                    if quality == "best":
+                        if h < 720 and method < 8:
+                            print(f"Method {method} delivered {h}p — trying next method for better quality...")
+                            quality_ok = False
+                            f.unlink()
+                    elif quality != "audio":
+                        if h < int(quality) - 150:
+                            print(f"Method {method} delivered {h}p instead of {quality}p — rejecting...")
+                            quality_ok = False
+                            f.unlink()
             if quality_ok:
+                if quality == "best" and current_height > best_height:
+                    best_height = current_height
+                    best_method = method
                 success = True
-                print(f"Download successful with method {method}!")
+                print(f"Download successful with method {method}! ({current_height}p)")
                 break
         print(f"Method {method} failed, waiting 3 seconds...")
         time.sleep(3)
