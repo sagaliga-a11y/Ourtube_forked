@@ -48,7 +48,6 @@ def get_format(quality):
         "1080": "bestvideo[height>=1000][height<=1080]+bestaudio/bestvideo[height<=1080]+bestaudio/best",
         "720": "bestvideo[height>=700][height<=720]+bestaudio/bestvideo[height<=720]+bestaudio/best",
         "480": "bestvideo[height>=450][height<=480]+bestaudio/bestvideo[height<=480]+bestaudio/best",
-        "360": "bestvideo[height>=330][height<=360]+bestaudio/bestvideo[height<=360]+bestaudio/best",
     }
     return formats.get(quality, formats["best"])
 
